@@ -1,28 +1,29 @@
 package com.smartsoft.casper.smartsoft;
 
-import android.annotation.TargetApi;
-import android.app.Activity;
-import android.app.Application;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
-import android.content.pm.ActivityInfo;
-import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
-import android.util.Log;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
 
 /**
  * Created by alexander on 09.01.16.
  */
-public class CustomFragmentManager implements CustomFragmentManagerImp{
-    FragmentManager instance;
+public class CustomFragmentManager implements CustomFragmentManagerImp {
+    private FragmentManager instance;
 
     public CustomFragmentManager(FragmentManager instance) {
         this.instance = instance;
+    }
+
+    public static void enableDebugLogging(boolean enabled) {
+        FragmentManager.enableDebugLogging(enabled);
     }
 
     @Override
@@ -41,19 +42,51 @@ public class CustomFragmentManager implements CustomFragmentManagerImp{
 
     @Override
     public void popBackStackOverlapping() {
-        new ActivityInfo().dump(); {
-            {
+        List<FragmentInfo> infos;
+        try {
+            infos = getFragmentsStackByReflationField();
+        }  catch (Exception e) {
+            infos = getFragmentsStackFromDump();
+        }
+        ListIterator<FragmentInfo> iter = infos.listIterator(infos.size());
+        int popBackCount = getPopBackOverlappingCount(iter);
+        popBackStack(popBackCount);
+    }
 
-            }
+    private List<FragmentInfo> getFragmentsStackByReflationField() throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
+        List<FragmentInfo> result = new ArrayList<>();
+        Class classToInvestigate = Class.forName("android.app.FragmentManagerImpl");
+        Field field = classToInvestigate.getDeclaredField("mAdded");
+        field.setAccessible(true);
+        ArrayList<Fragment> fragments = (ArrayList<Fragment>) field.get(instance);
+        for(int i = 0; i < fragments.size(); i++) {
+            result.add(new FragmentInfo(fragments.get(i).getClass().getName()));
         }
 
-        /*int id = instance.getBackStackEntryAt(count - 1) {
+        return result;
+    }
 
-        }();*/
-        //Fragment fr = instance.findFragmentById(id);
-        /*if (fr != null) {
-            Log.d("TAGG", fr.getClass().toString());
-        }*/
+    private List<FragmentInfo> getFragmentsStackFromDump() {
+        String dump = "";
+        DumpWriter writer = new DumpWriter();
+        instance.dump(FragmentManagerDumpParser.PREFIX, new FileDescriptor(), writer, new String[]{});
+        dump = writer.toString();
+        writer.close();
+
+        return FragmentManagerDumpParser.parse(dump);
+    }
+
+    private int getPopBackOverlappingCount(ListIterator<FragmentInfo> iter) {
+        int popBackCount = 0;
+        String previousClassName = null;
+        while (iter.hasPrevious()) {
+            String nextClassName = "";
+            nextClassName = iter.previous().className;
+            if (previousClassName == null || nextClassName.equals(previousClassName)) {
+                popBackCount++;
+            }
+        }
+        return popBackCount;
     }
 
     @Override
@@ -145,10 +178,6 @@ public class CustomFragmentManager implements CustomFragmentManagerImp{
 
     public void dump(String var1, FileDescriptor var2, PrintWriter var3, String[] var4) {
         instance.dump(var1, var2, var3, var4);
-    }
-
-    public static void enableDebugLogging(boolean enabled) {
-        FragmentManager.enableDebugLogging(enabled);
     }
 
     public void invalidateOptionsMenu() {
