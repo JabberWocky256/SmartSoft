@@ -104,6 +104,11 @@ public class CustomFragmentManager implements CustomFragmentManagerImp {
 
     }
 
+    @Override
+    public Fragment getTopFragment() {
+        return null;
+    }
+
     public FragmentTransaction beginTransaction() {
         return instance.beginTransaction();
     }

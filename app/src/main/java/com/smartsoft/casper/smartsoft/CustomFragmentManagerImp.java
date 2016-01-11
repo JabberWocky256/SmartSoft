@@ -39,4 +39,6 @@ public interface CustomFragmentManagerImp {
      * @param fr
      */
     void go(Fragment fr);
+
+    Fragment getTopFragment();
 }
