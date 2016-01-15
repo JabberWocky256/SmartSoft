@@ -44,49 +44,14 @@ public class CustomFragmentManager implements CustomFragmentManagerImp {
     public void popBackStackOverlapping() {
         List<FragmentInfo> infos;
         try {
-            infos = getFragmentsStackByReflationField();
-        }  catch (Exception e) {
-            infos = getFragmentsStackFromDump();
+            infos = getFragmentsInfoByReflationField();
+        } catch (Exception e) {
+            infos = getFragmentsInfoFromDump();
         }
         ListIterator<FragmentInfo> iter = infos.listIterator(infos.size());
         int popBackCount = getPopBackOverlappingCount(iter);
+        popBackCount = getPopBackStackNotZero(popBackCount);
         popBackStack(popBackCount);
-    }
-
-    private List<FragmentInfo> getFragmentsStackByReflationField() throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
-        List<FragmentInfo> result = new ArrayList<>();
-        Class classToInvestigate = Class.forName("android.app.FragmentManagerImpl");
-        Field field = classToInvestigate.getDeclaredField("mAdded");
-        field.setAccessible(true);
-        ArrayList<Fragment> fragments = (ArrayList<Fragment>) field.get(instance);
-        for(int i = 0; i < fragments.size(); i++) {
-            result.add(new FragmentInfo(fragments.get(i).getClass().getName()));
-        }
-
-        return result;
-    }
-
-    private List<FragmentInfo> getFragmentsStackFromDump() {
-        String dump = "";
-        DumpWriter writer = new DumpWriter();
-        instance.dump(FragmentManagerDumpParser.PREFIX, new FileDescriptor(), writer, new String[]{});
-        dump = writer.toString();
-        writer.close();
-
-        return FragmentManagerDumpParser.parse(dump);
-    }
-
-    private int getPopBackOverlappingCount(ListIterator<FragmentInfo> iter) {
-        int popBackCount = 0;
-        String previousClassName = null;
-        while (iter.hasPrevious()) {
-            String nextClassName = "";
-            nextClassName = iter.previous().className;
-            if (previousClassName == null || nextClassName.equals(previousClassName)) {
-                popBackCount++;
-            }
-        }
-        return popBackCount;
     }
 
     @Override
@@ -107,6 +72,51 @@ public class CustomFragmentManager implements CustomFragmentManagerImp {
     @Override
     public Fragment getTopFragment() {
         return null;
+    }
+
+    private int getPopBackStackNotZero(int popBackCount) {
+        return popBackCount == 0 ? 1 : popBackCount;
+    }
+
+    private List<FragmentInfo> getFragmentsInfoByReflationField() throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
+        List<FragmentInfo> result = new ArrayList<>();
+        ArrayList<Fragment> fragments = getFragmentsStackByReflectionField();
+        for (int i = 0; i < fragments.size(); i++) {
+            result.add(new FragmentInfo(fragments.get(i).getClass().getName()));
+        }
+
+        return result;
+    }
+
+    private ArrayList<Fragment> getFragmentsStackByReflectionField() throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
+        Class classToInvestigate = Class.forName("android.app.FragmentManagerImpl");
+        Field field = classToInvestigate.getDeclaredField("mActive");
+        field.setAccessible(true);
+        return (ArrayList<Fragment>) field.get(instance);
+    }
+
+    private List<FragmentInfo> getFragmentsInfoFromDump() {
+        String dump = "";
+        DumpWriter writer = new DumpWriter();
+        instance.dump(FragmentManagerDumpParser.PREFIX, new FileDescriptor(), writer, new String[]{});
+        dump = writer.toString();
+        writer.close();
+
+        return FragmentManagerDumpParser.parse(dump);
+    }
+
+    private int getPopBackOverlappingCount(ListIterator<FragmentInfo> iter) {
+        int popBackCount = 0;
+        String previousClassName = null;
+        while (iter.hasPrevious()) {
+            String nextClassName = "";
+            nextClassName = iter.previous().className;
+            if (previousClassName == null || nextClassName.equals(previousClassName)) {
+                previousClassName = nextClassName;
+                popBackCount++;
+            }
+        }
+        return popBackCount;
     }
 
     public FragmentTransaction beginTransaction() {

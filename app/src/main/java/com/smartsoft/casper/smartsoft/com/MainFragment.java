@@ -15,6 +15,7 @@ import com.smartsoft.casper.smartsoft.R;
  */
 public class MainFragment extends Fragment {
     public static int count = 0;
+
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -23,12 +24,11 @@ public class MainFragment extends Fragment {
         view.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                getMainActivity().getCustomFragmentManager().popBackStackOverlapping();
+                getFragmentManager().beginTransaction().attach(new MainFragment()).commit();
             }
         });
         return view;
     }
-
 
 
     public MainActivity getMainActivity() {

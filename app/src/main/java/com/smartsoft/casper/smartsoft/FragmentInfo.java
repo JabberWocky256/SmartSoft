@@ -5,6 +5,7 @@ package com.smartsoft.casper.smartsoft;
  */
 public class FragmentInfo {
     public String className;
+    public int id;
 
     public FragmentInfo(String className) {
         this.className = className;
